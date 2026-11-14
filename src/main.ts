@@ -20,6 +20,7 @@ import { JellyDeformation } from './physics/JellyDeformation';
 import { DragDropThrow } from './physics/DragDropThrow';
 import { TrajectoryArc } from './physics/TrajectoryArc';
 import { TrackCollectibles } from './systems/TrackCollectibles';
+import { VillainAttacks } from './systems/VillainAttacks';
 import { Haptics } from './core/Haptics';
 
 import { ParticleSystem } from './systems/ParticleSystem';
@@ -52,6 +53,7 @@ class Game {
   public ripples: RippleSystem;
   public stageManager: StageManager;
   public trackCollectibles: TrackCollectibles;
+  public villainAttacks: VillainAttacks;
 
   public audio: AudioEngine;
   public ui: UIManager;
@@ -129,6 +131,16 @@ class Game {
       this.king,
       this.particles,
       this.eventBus
+    );
+
+    // Villain Attacks (Stage 4)
+    this.villainAttacks = new VillainAttacks(
+      this.engine.scene,
+      this.king,
+      this.particles,
+      this.audio,
+      this.jelly,
+      this.physicsState
     );
 
     // UI
@@ -272,10 +284,12 @@ class Game {
     });
 
     this.eventBus.on('stage:changed', (data: { config: any }) => {
+      this.villainAttacks.clear();
       this.audio.startStageSoundscape(data.config.env);
     });
 
     this.eventBus.on('stage:complete', (data: { isFinale: boolean }) => {
+      this.villainAttacks.clear();
       if (data.isFinale) {
         this.audio.startStageSoundscape('dawn');
       }
@@ -463,14 +477,22 @@ class Game {
     this.falafeltchik.bodyCenter.getWorldPosition(charWorldPos);
     this.stageManager.checkStarCollection(charWorldPos);
 
-    // 11. Treadmill Collectibles (Sesame Seeds)
+    // 11. Villain food attack projectiles (Stage 4)
+    this.villainAttacks.update(
+      dt,
+      this.stageManager.stageIndex,
+      this.stageManager.storyCompleted,
+      charWorldPos
+    );
+
+    // 12. Treadmill Collectibles (Sesame Seeds)
     this.trackCollectibles.update(dt, elapsed, scrollSpeed, charWorldPos);
 
-    // 12. Particles & Ripples
+    // 13. Particles & Ripples
     this.particles.update(dt);
     this.ripples.update(dt);
 
-    // 13. Camera and render
+    // 14. Camera and render
     this.cameraManager.update();
     this.engine.render(this.cameraManager.camera);
   }

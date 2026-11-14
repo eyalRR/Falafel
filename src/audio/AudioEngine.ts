@@ -75,6 +75,7 @@ export const STAGE_SCORES: Record<string, StageScore> = {
 export class AudioEngine {
   public audioCtx: AudioContext | null = null;
   public soundEnabled = true;
+  public isPlaying = false;
 
   private masterGain: GainNode | null = null;
   private stageGain: GainNode | null = null;
@@ -101,10 +102,18 @@ export class AudioEngine {
         this.audioCtx = new AudioCtxClass();
       }
     }
-    if (this.audioCtx && this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume();
-    }
     this.initAudioBus();
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume().then(() => {
+        if (this.soundEnabled && !this.isPlaying && this.currentStage) {
+          this._playStageSoundscape(this.currentStage);
+        }
+      }).catch(() => {});
+    } else if (this.audioCtx && this.audioCtx.state === 'running') {
+      if (this.soundEnabled && !this.isPlaying && this.currentStage) {
+        this._playStageSoundscape(this.currentStage);
+      }
+    }
   }
 
   public setSoundEnabled(enabled: boolean): void {
@@ -154,10 +163,38 @@ export class AudioEngine {
 
   public startStageSoundscape(stageKey: string): void {
     this.currentStage = stageKey;
+    if (!this.soundEnabled) return;
+
+    if (!this.audioCtx) {
+      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtxClass) {
+        this.audioCtx = new AudioCtxClass();
+      }
+    }
+    this.initAudioBus();
+
+    if (!this.audioCtx) return;
+
+    if (this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume().then(() => {
+        if (this.soundEnabled && this.currentStage === stageKey) {
+          this._playStageSoundscape(stageKey);
+        }
+      }).catch(() => {});
+      return;
+    }
+
+    if (this.audioCtx.state === 'running') {
+      this._playStageSoundscape(stageKey);
+    }
+  }
+
+  private _playStageSoundscape(stageKey: string): void {
     if (!this.soundEnabled || !this.audioCtx || this.audioCtx.state !== 'running') return;
     this.initAudioBus();
 
     this.stopStageSoundscape();
+    this.isPlaying = true;
 
     if (this.stageGain && this.audioCtx) {
       const now = this.audioCtx.currentTime;
@@ -212,6 +249,7 @@ export class AudioEngine {
   }
 
   public stopStageSoundscape(): void {
+    this.isPlaying = false;
     this.sequenceId++;
     if (this.phraseTimer) {
       clearTimeout(this.phraseTimer);

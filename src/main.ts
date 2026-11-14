@@ -283,14 +283,21 @@ class Game {
       this.cameraManager.applyResponsive(false);
     });
 
-    // Audio unlock on first pointerdown
+    // Audio unlock on first user interaction anywhere
+    const unlockEvents = ['pointerdown', 'touchstart', 'mousedown', 'keydown', 'click'];
     const unlock = () => {
       this.audio.ensureAudio();
-      window.removeEventListener('pointerdown', unlock);
-      window.removeEventListener('keydown', unlock);
+      if (this.audio.soundEnabled && !this.audio.isPlaying) {
+        const stageEnv = STORY_STAGES[this.stageManager.stageIndex]?.env || 'jaffa';
+        this.audio.startStageSoundscape(stageEnv);
+      }
+      unlockEvents.forEach((ev) => {
+        window.removeEventListener(ev, unlock, true);
+      });
     };
-    window.addEventListener('pointerdown', unlock);
-    window.addEventListener('keydown', unlock);
+    unlockEvents.forEach((ev) => {
+      window.addEventListener(ev, unlock, { capture: true });
+    });
   }
 
   private tick(dt: number, elapsed: number): void {

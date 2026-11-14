@@ -21,7 +21,6 @@ export class UIManager {
   private storyDotsEl: HTMLElement | null;
   private starCounterEl: HTMLElement | null;
   private stageTimerEl: HTMLElement | null;
-  private sesameCounterEl: HTMLElement | null;
   private storyTextEl: HTMLElement | null;
   private storyModalBackdrop: HTMLElement | null;
   private storyCardBadge: HTMLElement | null;
@@ -48,7 +47,6 @@ export class UIManager {
     this.storyDotsEl = document.getElementById('story-dots');
     this.starCounterEl = document.getElementById('star-counter');
     this.stageTimerEl = document.getElementById('stage-timer');
-    this.sesameCounterEl = document.getElementById('sesame-counter');
     this.storyTextEl = document.getElementById('story-text');
     this.storyModalBackdrop = document.getElementById('story-modal-backdrop');
     this.storyCardBadge = document.getElementById('story-card-badge');
@@ -146,12 +144,6 @@ export class UIManager {
     this.eventBus.on('stage:timerTick', (data: { elapsedSec: number }) => {
       if (this.stageTimerEl) {
         this.stageTimerEl.textContent = `⏱️ ${this.formatTime(data.elapsedSec)}`;
-      }
-    });
-
-    this.eventBus.on('track:sesameCollected', (data: { count: number }) => {
-      if (this.sesameCounterEl) {
-        this.sesameCounterEl.textContent = `🌾 ${data.count}`;
       }
     });
 

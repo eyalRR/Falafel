@@ -88,10 +88,25 @@ export class Hummuson {
     this.cpMouth.visible = !happy;
   }
 
-  public update(elapsed: number, isRescued: boolean): void {
+  public reactionTimer = 0;
+
+  public triggerStarReaction(duration = 1.4): void {
+    this.reactionTimer = duration;
+    this.setHappy(true);
+  }
+
+  public update(dt: number, elapsed: number, isRescued: boolean): void {
     if (isRescued) {
       this.chickpeaBody.position.y = 0.28 + Math.abs(Math.sin(elapsed * 6)) * 0.18;
       this.chickpeaBody.rotation.y = elapsed * 3;
+    } else if (this.reactionTimer > 0) {
+      this.reactionTimer -= dt;
+      // Happy excited bounce & spin when a star is collected!
+      this.chickpeaBody.position.y = 0.24 + Math.abs(Math.sin(elapsed * 14)) * 0.28;
+      this.chickpeaBody.rotation.y += dt * 10;
+      if (this.reactionTimer <= 0) {
+        this.setHappy(false);
+      }
     } else {
       this.chickpeaBody.position.y = 0.28 + Math.sin(elapsed * 3) * 0.025;
       this.chickpeaBody.rotation.y = Math.sin(elapsed * 1.5) * 0.12;

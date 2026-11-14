@@ -268,6 +268,7 @@ export class StageManager {
         this.particles.spawnSparkles(star.mesh.position.x, star.mesh.position.y, star.mesh.position.z, '#fde047');
         this.eventBus.emit('sound:bell', 520 + this.starsCollected * 140);
         Haptics.star();
+        this.hummuson.triggerStarReaction(1.4);
         this.eventBus.emit('stage:starCollected', {
           starsCollected: this.starsCollected,
           total: this.stageStars.length

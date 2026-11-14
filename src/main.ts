@@ -19,7 +19,6 @@ import { PhysicsState } from './physics/PhysicsState';
 import { JellyDeformation } from './physics/JellyDeformation';
 import { DragDropThrow } from './physics/DragDropThrow';
 import { TrajectoryArc } from './physics/TrajectoryArc';
-import { TrackCollectibles } from './systems/TrackCollectibles';
 import { VillainAttacks } from './systems/VillainAttacks';
 import { Haptics } from './core/Haptics';
 
@@ -52,7 +51,6 @@ class Game {
   public particles: ParticleSystem;
   public ripples: RippleSystem;
   public stageManager: StageManager;
-  public trackCollectibles: TrackCollectibles;
   public villainAttacks: VillainAttacks;
 
   public audio: AudioEngine;
@@ -106,13 +104,6 @@ class Game {
     );
     this.trajectoryArc = new TrajectoryArc(this.engine.scene);
     this.dragDrop.trajectoryArc = this.trajectoryArc;
-
-    this.trackCollectibles = new TrackCollectibles(
-      this.engine.scene,
-      this.particles,
-      this.audio,
-      this.eventBus
-    );
 
     this.dragDrop.onControlsToggle = (enabled) => {
       this.cameraManager.controls.enabled = enabled;
@@ -279,7 +270,6 @@ class Game {
 
     this.eventBus.on('ui:storyReplay', () => {
       this.audio.ensureAudio();
-      this.trackCollectibles.reset();
       this.stageManager.loadStage(0, true);
     });
 
@@ -462,8 +452,8 @@ class Game {
     this.falafeltchik.update(dt, elapsed, this.physicsState.motionMode === 'sit', this.windBoost);
 
     // 7. Companion Hummuson & Cage update
-    this.hummuson.update(elapsed, this.stageManager.storyCompleted);
-    this.shadowCage.update(elapsed);
+    this.hummuson.update(dt, elapsed, this.stageManager.storyCompleted);
+    this.shadowCage.update(dt, elapsed, this.hummuson.reactionTimer > 0);
 
     // 8. King Crumb update
     this.king.update(dt, elapsed);
@@ -485,14 +475,11 @@ class Game {
       charWorldPos
     );
 
-    // 12. Treadmill Collectibles (Sesame Seeds)
-    this.trackCollectibles.update(dt, elapsed, scrollSpeed, charWorldPos);
-
-    // 13. Particles & Ripples
+    // 12. Particles & Ripples
     this.particles.update(dt);
     this.ripples.update(dt);
 
-    // 14. Camera and render
+    // 13. Camera and render
     this.cameraManager.update();
     this.engine.render(this.cameraManager.camera);
   }

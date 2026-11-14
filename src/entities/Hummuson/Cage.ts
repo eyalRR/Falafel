@@ -31,8 +31,9 @@ export class ShadowCage {
     this.group.visible = visible;
   }
 
-  public update(elapsed: number): void {
-    this.cageMesh.rotation.y = elapsed * 0.5;
-    this.cageRing.rotation.z = -elapsed * 0.8;
+  public update(dt: number, elapsed: number, isReacting = false): void {
+    const mult = isReacting ? 3.5 : 1.0;
+    this.cageMesh.rotation.y += dt * 0.8 * mult;
+    this.cageRing.rotation.z -= dt * 1.2 * mult;
   }
 }

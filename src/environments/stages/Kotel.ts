@@ -141,27 +141,36 @@ export class KotelStage {
     this.interactiveObjects.push(olive);
   }
 
-  public updateDoves(dt: number, elapsed: number, dovesTriggered: boolean): void {
+  public triggerDoves(): void {
+    this.doves.forEach((dv) => {
+      dv.userData.vy = 2.6 + Math.random() * 1.2;
+    });
+  }
+
+  public updateDoves(dt: number, elapsed: number, dovesTriggered: boolean): boolean {
+    let stillFlying = dovesTriggered;
     for (let dv = 0; dv < this.doves.length; dv++) {
       const d = this.doves[dv];
       const ud = d.userData;
       if (dovesTriggered) {
-        ud.vy += 8.5 * dt;
         d.position.y += ud.vy * dt;
-        d.position.x += Math.sin(ud.phase + elapsed * 3) * 1.8 * dt;
-        d.position.z += Math.cos(ud.phase + elapsed * 3) * 1.8 * dt;
-        const flap = Math.sin(elapsed * 28 + ud.phase) * 0.9;
-        ud.wL.rotation.z = flap;
-        ud.wR.rotation.z = -flap;
-        if (d.position.y > 14) {
+        d.position.x -= dt * 1.1;
+        const flap = Math.sin(elapsed * 26 + dv) * 0.7;
+        ud.wL.rotation.x = flap;
+        ud.wR.rotation.x = -flap;
+        if (d.position.y > 11) {
           d.position.y = ud.baseY;
-          ud.vy = 0;
+          d.position.x = 2.8 + dv * 1.4;
+          if (dv === this.doves.length - 1) {
+            stillFlying = false;
+          }
         }
       } else {
         d.position.y = ud.baseY + Math.sin(elapsed * 2 + ud.phase) * 0.05;
-        ud.wL.rotation.z = 0;
-        ud.wR.rotation.z = 0;
+        ud.wL.rotation.x = 0;
+        ud.wR.rotation.x = 0;
       }
     }
+    return stillFlying;
   }
 }

@@ -487,4 +487,78 @@ export class AudioEngine {
       }
     } catch (e) {}
   }
+
+  public playWaterPlop(): void {
+    if (!this.soundEnabled || !this.audioCtx || !this.masterGain) return;
+    try {
+      const now = this.audioCtx.currentTime;
+      const o = this.audioCtx.createOscillator();
+      const g = this.audioCtx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(340, now);
+      o.frequency.exponentialRampToValueAtTime(720, now + 0.11);
+      g.gain.setValueAtTime(0.14, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      o.connect(g);
+      g.connect(this.masterGain);
+      o.start(now);
+      o.stop(now + 0.15);
+    } catch (e) {}
+  }
+
+  public playStoneTap(): void {
+    if (!this.soundEnabled || !this.audioCtx || !this.masterGain) return;
+    try {
+      const now = this.audioCtx.currentTime;
+      const o = this.audioCtx.createOscillator();
+      const g = this.audioCtx.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(190 + Math.random() * 60, now);
+      o.frequency.exponentialRampToValueAtTime(60, now + 0.08);
+      g.gain.setValueAtTime(0.12, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      o.connect(g);
+      g.connect(this.masterGain);
+      o.start(now);
+      o.stop(now + 0.10);
+    } catch (e) {}
+  }
+
+  public playDoveFlutter(): void {
+    if (!this.soundEnabled || !this.audioCtx || !this.masterGain) return;
+    try {
+      for (let i = 0; i < 5; i++) {
+        const t0 = this.audioCtx.currentTime + i * 0.06;
+        const o = this.audioCtx.createOscillator();
+        const g = this.audioCtx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(280 + Math.random() * 80, t0);
+        o.frequency.exponentialRampToValueAtTime(180, t0 + 0.07);
+        g.gain.setValueAtTime(0.05, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.08);
+        o.connect(g);
+        g.connect(this.masterGain);
+        o.start(t0);
+        o.stop(t0 + 0.09);
+      }
+    } catch (e) {}
+  }
+
+  public playLeafRustle(): void {
+    if (!this.soundEnabled || !this.audioCtx || !this.masterGain) return;
+    try {
+      const now = this.audioCtx.currentTime;
+      const o = this.audioCtx.createOscillator();
+      const g = this.audioCtx.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(420, now);
+      o.frequency.exponentialRampToValueAtTime(260, now + 0.12);
+      g.gain.setValueAtTime(0.045, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      o.connect(g);
+      g.connect(this.masterGain);
+      o.start(now);
+      o.stop(now + 0.15);
+    } catch (e) {}
+  }
 }

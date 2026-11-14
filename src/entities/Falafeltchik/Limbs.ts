@@ -107,4 +107,17 @@ export class FalafelLimbs {
     this.leftLeg.position.y = -0.45;
     this.rightLeg.position.y = -0.45;
   }
+
+  public flailPhase = 0;
+
+  public animateFlail(dt: number): void {
+    this.flailPhase += dt * 20;
+    const sin = Math.sin(this.flailPhase) * 0.9;
+    this.leftLeg.rotation.set(sin, 0, 0);
+    this.rightLeg.rotation.set(-sin, 0, 0);
+    this.leftArm.rotation.set(-sin, 0, 0);
+    this.rightArm.rotation.set(sin, 0, 0);
+    this.leftLeg.position.y = -0.50;
+    this.rightLeg.position.y = -0.50;
+  }
 }

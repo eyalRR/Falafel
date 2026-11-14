@@ -182,25 +182,51 @@ class Game {
       if (root && root.userData) {
         const type = root.userData.interactType;
         if (type === 'pebble') {
-          root.userData.vy = 2.6 + Math.random() * 1.2;
+          root.userData.vy = 2.4;
           root.userData.rotVel = (Math.random() - 0.5) * 14;
-          this.particles.spawnDust(root.position.x, 0.08, root.position.z, 5, 0.3);
-          this.audio.playBoing(360);
-        } else if (type === 'cat') {
-          root.userData.swayVel = 7.0;
-          this.audio.playMeow();
-        } else if (type === 'duck') {
-          root.userData.swayVel = 6.5;
-          this.audio.playQuack();
+          this.particles.spawnDust(root.position.x, 0.08, root.position.z, 6, 0.45);
+          this.audio.playStoneTap();
         } else if (type === 'water') {
           this.ripples.spawnWaterRipple(hits[0].point.x, hits[0].point.y, hits[0].point.z);
-          this.audio.playBoing(440);
+          this.audio.playWaterPlop();
+        } else if (type === 'kotel') {
+          this.particles.spawnSparkles(hits[0].point.x, hits[0].point.y, hits[0].point.z, '#fde68a');
+          this.audio.playStoneTap();
+          if (this.envManager.triggerDoves()) {
+            this.audio.playDoveFlutter();
+          }
+        } else if (type === 'shrub' || type === 'palm') {
+          root.userData.swayVel += (Math.random() > 0.5 ? 1 : -1) * 4.5;
+          this.particles.spawnDust(hits[0].point.x, hits[0].point.y, hits[0].point.z, 4, 0.35);
+          this.audio.playLeafRustle();
+        } else if (type === 'stone') {
+          root.userData.swayVel += 2.6;
+          this.particles.spawnDust(hits[0].point.x, hits[0].point.y, hits[0].point.z, 6, 0.45);
+          this.audio.playStoneTap();
+        } else if (type === 'boat') {
+          root.userData.swayVel += 4.2;
+          this.ripples.spawnWaterRipple(root.position.x, 0.04, root.position.z);
+          this.audio.playBell(740);
+        } else if (type === 'clocktower') {
+          root.userData.swayVel += 2.2;
+          this.particles.spawnSparkles(root.position.x, 5.2, root.position.z, '#fef08a');
+          this.audio.playBell(523.25);
+        } else if (type === 'ibex') {
+          root.userData.swayVel = 6.5;
+          this.particles.spawnDust(root.position.x, 0.35, root.position.z, 5, 0.3);
+          this.audio.playBoing(210);
+        } else if (type === 'cat') {
+          root.userData.swayVel = 6.0;
+          this.particles.spawnSparkles(root.position.x, 0.5, root.position.z, '#fdba74');
+          this.audio.playMeow();
+        } else if (type === 'duck') {
+          root.userData.swayVel = 7.0;
+          this.ripples.spawnWaterRipple(root.position.x, 0.08, root.position.z);
+          this.audio.playQuack();
         } else if (type === 'king') {
           root.userData.wobbleVel = 12.0;
-          this.audio.playBoing(200);
-        } else if (type === 'shrub' || type === 'palm') {
-          root.userData.swayVel = 5.0;
-          this.audio.playWhoosh();
+          this.particles.spawnSparkles(root.position.x, 0.9, root.position.z, '#f59e0b');
+          this.audio.playBoing(190);
         }
       }
     }
@@ -445,6 +471,10 @@ class Game {
       }
     }
 
+    if (this.physicsState.isGrabbing) {
+      this.falafeltchik.limbs.animateFlail(dt);
+    }
+
     // 5. Jelly squash/stretch
     this.jelly.update(dt, this.falafeltchik.physicsGroup);
 
@@ -459,7 +489,7 @@ class Game {
     this.king.update(dt, elapsed);
 
     // 9. Environment & Stages update
-    this.envManager.update(dt, elapsed);
+    this.envManager.update(dt, elapsed, scrollSpeed);
 
     // 10. Star collecting & stage progression
     this.stageManager.update(elapsed);

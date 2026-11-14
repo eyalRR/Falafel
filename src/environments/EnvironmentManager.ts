@@ -13,6 +13,9 @@ export class EnvironmentManager {
   public skyDome: SkyDome;
   public groundPlane: THREE.Mesh;
   public groundMat: THREE.MeshStandardMaterial;
+  public trackMesh: THREE.Mesh;
+  public trackMat: THREE.MeshStandardMaterial;
+  public dovesTriggered = false;
 
   public activeEnvName: StageKey = 'kotel';
   public currentStageInstance: KotelStage | MasadaStage | KinneretStage | JaffaStage | null = null;
@@ -38,22 +41,69 @@ export class EnvironmentManager {
     });
 
     const groundGeo = new THREE.PlaneGeometry(140, 140, 64, 64);
-    const gPos = groundGeo.attributes.position;
-    for (let gi = 0; gi < gPos.count; gi++) {
-      const gx = gPos.getX(gi);
-      const gy = gPos.getY(gi);
-      const distFromTrack = Math.max(0, Math.abs(gx) - 2.1);
-      const dune = Math.sin(gx * 0.18 + gy * 0.12) * Math.cos(gy * 0.15) * Math.min(distFromTrack * 0.22, 1.35);
-      gPos.setZ(gi, dune);
-    }
-    groundGeo.computeVertexNormals();
-
     this.groundPlane = new THREE.Mesh(groundGeo, this.groundMat);
     this.groundPlane.rotation.x = -Math.PI / 2;
     this.groundPlane.receiveShadow = true;
     this.scene.add(this.groundPlane);
 
+    // Raised sandy travel track strip with bump relief
+    this.trackMat = new THREE.MeshStandardMaterial({
+      map: sandBundle.map,
+      bumpMap: sandBundle.bumpMap,
+      bumpScale: 0.045,
+      roughness: 0.92,
+      metalness: 0.0
+    });
+    this.trackMesh = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.04, 60), this.trackMat);
+    this.trackMesh.position.set(0, 0.01, 0);
+    this.trackMesh.receiveShadow = true;
+    this.scene.add(this.trackMesh);
+
+    this.sculptGround('kotel');
     this.buildEnv('kotel');
+  }
+
+  public sculptGround(envName: StageKey): void {
+    const gp = this.groundPlane.geometry.attributes.position;
+    for (let i = 0; i < gp.count; i++) {
+      const gx = gp.getX(i);
+      const gy = gp.getY(i);
+      const distFromTrack = Math.max(0, Math.abs(gx) - 2.1);
+      let h = Math.sin(gx * 0.18 + gy * 0.12) * Math.cos(gy * 0.15) * Math.min(distFromTrack * 0.22, 1.35);
+
+      if (envName === 'jaffa') {
+        // Jaffa sea is on the west (negative X): slope down to -0.55 so water sits nicely
+        if (gx < -2.1) {
+          const t = Math.min((-gx - 2.1) / 2.2, 1.0);
+          h = -0.55 * t;
+        }
+      } else if (envName === 'kinneret') {
+        // Kinneret lake is on the east (positive X): slope down to -0.55
+        if (gx > 2.1) {
+          const t = Math.min((gx - 2.1) / 2.2, 1.0);
+          h = -0.55 * t;
+        }
+      } else if (envName === 'masada') {
+        // Masada Dead Sea in distance (world Z < -15.5):
+        // ground plane is rotated -PI/2 on X, so plane Y maps to -world Z (worldZ = -gy)
+        const worldZ = -gy;
+        if (worldZ < -15.5) {
+          h = -0.45;
+        }
+      }
+      gp.setZ(i, h);
+    }
+    gp.needsUpdate = true;
+    this.groundPlane.geometry.computeVertexNormals();
+  }
+
+  public triggerDoves(): boolean {
+    if (this.currentStageInstance instanceof KotelStage && !this.dovesTriggered) {
+      this.dovesTriggered = true;
+      this.currentStageInstance.triggerDoves();
+      return true;
+    }
+    return false;
   }
 
   public clearEnv(): void {
@@ -80,6 +130,8 @@ export class EnvironmentManager {
   public buildEnv(name: StageKey): void {
     this.clearEnv();
     this.activeEnvName = name;
+    this.sculptGround(name);
+    this.dovesTriggered = false;
 
     // Drifting mist
     const mistMat = new THREE.MeshBasicMaterial({
@@ -143,7 +195,7 @@ export class EnvironmentManager {
     return this.currentStageInstance ? this.currentStageInstance.scrollingProps : [];
   }
 
-  public update(dt: number, elapsed: number, dovesTriggered = false): void {
+  public update(dt: number, elapsed: number, scrollSpeed: number = 0): void {
     // Drifting mist
     for (let j = 0; j < this.mistMeshes.length; j++) {
       const mist = this.mistMeshes[j];
@@ -151,9 +203,14 @@ export class EnvironmentManager {
       if (mist.position.x > 12) mist.position.x = -12;
     }
 
+    // Scroll track texture
+    if (scrollSpeed > 0 && this.trackMat.map) {
+      this.trackMat.map.offset.y -= scrollSpeed * dt * 0.11;
+    }
+
     // Active stage update
     if (this.currentStageInstance instanceof KotelStage) {
-      this.currentStageInstance.updateDoves(dt, elapsed, dovesTriggered);
+      this.dovesTriggered = this.currentStageInstance.updateDoves(dt, elapsed, this.dovesTriggered);
     } else if (this.currentStageInstance instanceof MasadaStage) {
       this.currentStageInstance.updateBirds(dt);
     } else if (this.currentStageInstance instanceof KinneretStage) {

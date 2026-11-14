@@ -91,6 +91,8 @@ export class AudioEngine {
   private currentStage = 'jaffa';
   private phraseStep = 0;
   private drumStep = 0;
+  private sequenceId = 0;
+  private activeNotes: OscillatorNode[] = [];
 
   public ensureAudio(): void {
     if (!this.audioCtx) {
@@ -155,8 +157,17 @@ export class AudioEngine {
     if (!this.soundEnabled || !this.audioCtx || this.audioCtx.state !== 'running') return;
     this.initAudioBus();
 
-    const score = STAGE_SCORES[stageKey] || STAGE_SCORES.jaffa;
     this.stopStageSoundscape();
+
+    if (this.stageGain && this.audioCtx) {
+      const now = this.audioCtx.currentTime;
+      this.stageGain.gain.cancelScheduledValues(now);
+      this.stageGain.gain.setValueAtTime(0.001, now);
+      this.stageGain.gain.linearRampToValueAtTime(1.0, now + 0.22);
+    }
+
+    const score = STAGE_SCORES[stageKey] || STAGE_SCORES.jaffa;
+    const currentSeq = this.sequenceId;
 
     // Drones / Pads
     score.padFreqs.forEach((freq) => {
@@ -175,7 +186,7 @@ export class AudioEngine {
     // Melodic sequencer
     this.phraseStep = 0;
     const playNextNote = () => {
-      if (!this.soundEnabled || !this.audioCtx) return;
+      if (!this.soundEnabled || !this.audioCtx || this.sequenceId !== currentSeq) return;
       const note = score.phrase[this.phraseStep];
       this.phraseStep = (this.phraseStep + 1) % score.phrase.length;
 
@@ -190,7 +201,7 @@ export class AudioEngine {
     if (score.drumPattern && score.drumMs) {
       this.drumStep = 0;
       this.drumTimer = setInterval(() => {
-        if (!this.soundEnabled || !score.drumPattern) return;
+        if (!this.soundEnabled || !score.drumPattern || this.sequenceId !== currentSeq) return;
         const hit = score.drumPattern[this.drumStep % score.drumPattern.length];
         this.drumStep++;
         if (hit > 0) {
@@ -201,6 +212,7 @@ export class AudioEngine {
   }
 
   public stopStageSoundscape(): void {
+    this.sequenceId++;
     if (this.phraseTimer) {
       clearTimeout(this.phraseTimer);
       this.phraseTimer = null;
@@ -212,9 +224,18 @@ export class AudioEngine {
     this.padOscs.forEach((o) => {
       try {
         o.stop();
+        o.disconnect();
       } catch (e) {}
     });
     this.padOscs = [];
+
+    this.activeNotes.forEach((o) => {
+      try {
+        o.stop();
+        o.disconnect();
+      } catch (e) {}
+    });
+    this.activeNotes = [];
   }
 
   private playMelodicNote(freq: number, duration: number, voice: string): void {
@@ -233,6 +254,13 @@ export class AudioEngine {
 
       osc.connect(g);
       g.connect(this.echoIn);
+
+      this.activeNotes.push(osc);
+      osc.onended = () => {
+        const idx = this.activeNotes.indexOf(osc);
+        if (idx !== -1) this.activeNotes.splice(idx, 1);
+      };
+
       osc.start(now);
       osc.stop(now + duration + 0.05);
     } catch (e) {}

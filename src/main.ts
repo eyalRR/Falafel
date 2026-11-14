@@ -213,7 +213,7 @@ class Game {
     this.eventBus.on('ui:switchEnv', (env: StageKey) => {
       this.audio.ensureAudio();
       this.envManager.buildEnv(env);
-      this.audio.startStageSoundscape(this.stageManager.storyCompleted ? 'dawn' : env);
+      this.audio.startStageSoundscape(env);
       this.jelly.triggerImpulse(2.4, 0, 0.4);
     });
 
@@ -257,6 +257,12 @@ class Game {
 
     this.eventBus.on('stage:changed', (data: { config: any }) => {
       this.audio.startStageSoundscape(data.config.env);
+    });
+
+    this.eventBus.on('stage:complete', (data: { isFinale: boolean }) => {
+      if (data.isFinale) {
+        this.audio.startStageSoundscape('dawn');
+      }
     });
 
     this.eventBus.on('sound:boing', (pitch: number) => this.audio.playBoing(pitch));

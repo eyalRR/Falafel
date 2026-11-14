@@ -17,7 +17,6 @@ export class EnvironmentManager {
   public activeEnvName: StageKey = 'kotel';
   public currentStageInstance: KotelStage | MasadaStage | KinneretStage | JaffaStage | null = null;
 
-  public ambientMotes: THREE.Mesh[] = [];
   public mistMeshes: THREE.Mesh[] = [];
 
   constructor(scene: THREE.Scene) {
@@ -54,20 +53,7 @@ export class EnvironmentManager {
     this.groundPlane.receiveShadow = true;
     this.scene.add(this.groundPlane);
 
-    this.initAmbientMotes();
     this.buildEnv('kotel');
-  }
-
-  private initAmbientMotes(): void {
-    const moteGeo = new THREE.SphereGeometry(0.024, 6, 6);
-    const moteMat = new THREE.MeshBasicMaterial({ color: '#fef08a', transparent: true, opacity: 0.55 });
-    for (let am = 0; am < 28; am++) {
-      const mote = new THREE.Mesh(moteGeo, moteMat);
-      mote.position.set((Math.random() - 0.5) * 9, 0.4 + Math.random() * 2.8, (Math.random() - 0.5) * 9);
-      mote.userData = { baseX: mote.position.x, baseY: mote.position.y, phase: Math.random() * 6.28 };
-      this.scene.add(mote);
-      this.ambientMotes.push(mote);
-    }
   }
 
   public clearEnv(): void {
@@ -158,14 +144,6 @@ export class EnvironmentManager {
   }
 
   public update(dt: number, elapsed: number, dovesTriggered = false): void {
-    // Ambient dust motes
-    for (let i = 0; i < this.ambientMotes.length; i++) {
-      const m = this.ambientMotes[i];
-      const ud = m.userData;
-      m.position.y = ud.baseY + Math.sin(elapsed * 1.2 + ud.phase) * 0.28;
-      m.position.x = ud.baseX + Math.cos(elapsed * 0.8 + ud.phase) * 0.35;
-    }
-
     // Drifting mist
     for (let j = 0; j < this.mistMeshes.length; j++) {
       const mist = this.mistMeshes[j];

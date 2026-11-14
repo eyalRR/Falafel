@@ -18,6 +18,9 @@ import { KingCrumbs } from './entities/KingCrumbs/KingCrumbs';
 import { PhysicsState } from './physics/PhysicsState';
 import { JellyDeformation } from './physics/JellyDeformation';
 import { DragDropThrow } from './physics/DragDropThrow';
+import { TrajectoryArc } from './physics/TrajectoryArc';
+import { TrackCollectibles } from './systems/TrackCollectibles';
+import { Haptics } from './core/Haptics';
 
 import { ParticleSystem } from './systems/ParticleSystem';
 import { RippleSystem } from './systems/RippleSystem';
@@ -43,10 +46,12 @@ class Game {
   public physicsState: PhysicsState;
   public jelly: JellyDeformation;
   public dragDrop: DragDropThrow;
+  public trajectoryArc: TrajectoryArc;
 
   public particles: ParticleSystem;
   public ripples: RippleSystem;
   public stageManager: StageManager;
+  public trackCollectibles: TrackCollectibles;
 
   public audio: AudioEngine;
   public ui: UIManager;
@@ -95,6 +100,15 @@ class Game {
       this.falafeltchik.root,
       this.physicsState,
       this.jelly,
+      this.eventBus
+    );
+    this.trajectoryArc = new TrajectoryArc(this.engine.scene);
+    this.dragDrop.trajectoryArc = this.trajectoryArc;
+
+    this.trackCollectibles = new TrackCollectibles(
+      this.engine.scene,
+      this.particles,
+      this.audio,
       this.eventBus
     );
 
@@ -207,6 +221,7 @@ class Game {
         this.jelly.velY = 3.2;
         this.audio.playBoing(310);
         this.particles.spawnDust(0, 0.08, 0, 8, 0.55);
+        Haptics.bounce();
       }
     });
 
@@ -252,6 +267,7 @@ class Game {
 
     this.eventBus.on('ui:storyReplay', () => {
       this.audio.ensureAudio();
+      this.trackCollectibles.reset();
       this.stageManager.loadStage(0, true);
     });
 
@@ -274,6 +290,7 @@ class Game {
     this.eventBus.on('fx:land', (data: { pos: THREE.Vector3 }) => {
       this.particles.spawnDust(data.pos.x, 0.08, data.pos.z, 7, 0.5);
       this.audio.playBoing(220);
+      Haptics.tap();
     });
   }
 
@@ -297,6 +314,34 @@ class Game {
     };
     unlockEvents.forEach((ev) => {
       window.addEventListener(ev, unlock, { capture: true });
+    });
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        this.eventBus.emit('ui:jump');
+      } else if (e.code === 'Digit1') {
+        this.stageManager.loadStage(0, true);
+      } else if (e.code === 'Digit2') {
+        this.stageManager.loadStage(1, true);
+      } else if (e.code === 'Digit3') {
+        this.stageManager.loadStage(2, true);
+      } else if (e.code === 'Digit4') {
+        this.stageManager.loadStage(3, true);
+      } else if (e.code === 'KeyR') {
+        this.stageManager.loadStage(this.stageManager.stageIndex, true);
+      } else if (e.code === 'KeyS') {
+        this.eventBus.emit('ui:toggleSound');
+      } else if (e.code === 'KeyM') {
+        const modes: MotionMode[] = ['run', 'roll', 'sit'];
+        const currentIdx = modes.indexOf(this.physicsState.motionMode);
+        const nextMode = modes[(currentIdx + 1) % modes.length];
+        this.eventBus.emit('ui:setMode', nextMode);
+        this.ui.setModeActive(nextMode);
+      }
     });
   }
 
@@ -414,13 +459,18 @@ class Game {
 
     // 10. Star collecting & stage progression
     this.stageManager.update(elapsed);
-    this.stageManager.checkStarCollection(this.falafeltchik.root.position);
+    const charWorldPos = new THREE.Vector3();
+    this.falafeltchik.bodyCenter.getWorldPosition(charWorldPos);
+    this.stageManager.checkStarCollection(charWorldPos);
 
-    // 11. Particles & Ripples
+    // 11. Treadmill Collectibles (Sesame Seeds)
+    this.trackCollectibles.update(dt, elapsed, scrollSpeed, charWorldPos);
+
+    // 12. Particles & Ripples
     this.particles.update(dt);
     this.ripples.update(dt);
 
-    // 12. Camera and render
+    // 13. Camera and render
     this.cameraManager.update();
     this.engine.render(this.cameraManager.camera);
   }

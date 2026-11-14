@@ -374,6 +374,24 @@ export class AudioEngine {
     } catch (e) {}
   }
 
+  public playCrunch(): void {
+    if (!this.soundEnabled || !this.audioCtx || !this.masterGain) return;
+    try {
+      const now = this.audioCtx.currentTime;
+      const osc = this.audioCtx.createOscillator();
+      const g = this.audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1100 + Math.random() * 250, now);
+      osc.frequency.exponentialRampToValueAtTime(320, now + 0.05);
+      g.gain.setValueAtTime(0.04, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      osc.connect(g);
+      g.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.07);
+    } catch (e) {}
+  }
+
   public playWhoosh(): void {
     if (!this.soundEnabled || !this.audioCtx || !this.masterGain) return;
     try {

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { PhysicsState } from './PhysicsState';
 import { JellyDeformation } from './JellyDeformation';
 import { EventBus } from '../core/EventBus';
+import { TrajectoryArc } from './TrajectoryArc';
+import { Haptics } from '../core/Haptics';
 
 export interface ThrowHistoryPoint {
   pos: THREE.Vector3;
@@ -15,6 +17,7 @@ export class DragDropThrow {
   private physicsState: PhysicsState;
   private jelly: JellyDeformation;
   private eventBus: EventBus;
+  public trajectoryArc?: TrajectoryArc;
 
   private raycaster = new THREE.Raycaster();
   private grabPlane = new THREE.Plane();
@@ -88,10 +91,31 @@ export class DragDropThrow {
         const now = performance.now();
         this.throwHistory.push({ pos: nextPos.clone(), t: now });
         if (this.throwHistory.length > 5) this.throwHistory.shift();
+
+        if (this.trajectoryArc && this.throwHistory.length >= 2) {
+          const first = this.throwHistory[0];
+          const last = this.throwHistory[this.throwHistory.length - 1];
+          const dtSec = Math.max((last.t - first.t) / 1000, 0.016);
+          const vx = (last.pos.x - first.pos.x) / dtSec;
+          const vy = (last.pos.y - first.pos.y) / dtSec;
+          const vz = (last.pos.z - first.pos.z) / dtSec;
+          const speed = Math.hypot(vx, vy, vz);
+          if (speed > 0.4 || this.characterRoot.position.y > 0.3) {
+            const predVel = new THREE.Vector3(vx, vy, vz).clampLength(0, 14);
+            if (predVel.length() < 1.0 && this.characterRoot.position.y > 0.3) {
+              predVel.set(0, 0.6, 0);
+            }
+            this.trajectoryArc.update(this.characterRoot.position, predVel);
+          }
+        }
       }
     });
 
     this.domElement.addEventListener('pointerup', (e) => {
+      if (this.trajectoryArc) {
+        this.trajectoryArc.hide();
+      }
+
       if (this.physicsState.isGrabbing) {
         this.physicsState.isGrabbing = false;
         if (this.onControlsToggle) this.onControlsToggle(true);
@@ -107,6 +131,7 @@ export class DragDropThrow {
           if (speed > 0.7 || this.characterRoot.position.y > 0.15) {
             this.physicsState.charVel.set(vx, vy, vz).clampLength(0, 14);
             this.physicsState.isThrown = true;
+            Haptics.slingshot();
             if (speed > 2.2) this.eventBus.emit('sound:whoosh');
             return;
           }

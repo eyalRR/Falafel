@@ -6,6 +6,13 @@ import { Hummuson } from '../entities/Hummuson/Hummuson';
 import { ShadowCage } from '../entities/Hummuson/Cage';
 import { KingCrumbs } from '../entities/KingCrumbs/KingCrumbs';
 import { ParticleSystem } from './ParticleSystem';
+import { Haptics } from '../core/Haptics';
+
+export function calcTahiniDrops(elapsedSeconds: number): number {
+  if (elapsedSeconds < 25) return 3;
+  if (elapsedSeconds < 45) return 2;
+  return 1;
+}
 
 export const STORY_STAGES: StageConfig[] = [
   {
@@ -102,6 +109,15 @@ export class StageManager {
   public starsCollected = 0;
   public stageStars: StageStarItem[] = [];
 
+  public stageStartTime = performance.now();
+  public isStageTimerActive = false;
+  public stageTimes: number[] = [0, 0, 0, 0];
+  public stageDrops: number[] = [0, 0, 0, 0];
+
+  public getTotalDrops(): number {
+    return this.stageDrops.reduce((a, b) => a + b, 0);
+  }
+
   private scene: THREE.Scene;
   private envManager: EnvironmentManager;
   private hummuson: Hummuson;
@@ -193,6 +209,8 @@ export class StageManager {
     this.stageIndex = idx;
     this.storyCompleted = false;
     this.starsCollected = 0;
+    this.stageStartTime = performance.now();
+    this.isStageTimerActive = true;
     this.clearStageStars();
 
     const st = STORY_STAGES[idx];
@@ -249,6 +267,7 @@ export class StageManager {
 
         this.particles.spawnSparkles(star.mesh.position.x, star.mesh.position.y, star.mesh.position.z, '#fde047');
         this.eventBus.emit('sound:bell', 520 + this.starsCollected * 140);
+        Haptics.star();
         this.eventBus.emit('stage:starCollected', {
           starsCollected: this.starsCollected,
           total: this.stageStars.length
@@ -266,6 +285,12 @@ export class StageManager {
   public completeCurrentStage(): void {
     if (this.storyCompleted || this.isTransitioning) return;
 
+    this.isStageTimerActive = false;
+    const finalStageTime = (performance.now() - this.stageStartTime) / 1000;
+    const drops = calcTahiniDrops(finalStageTime);
+    this.stageTimes[this.stageIndex] = finalStageTime;
+    this.stageDrops[this.stageIndex] = drops;
+
     this.particles.spawnSparkles(
       this.hummuson.group.position.x,
       0.6,
@@ -281,10 +306,14 @@ export class StageManager {
         stageIndex: this.stageIndex,
         isFinale: false,
         transitionTitle: curSt.transitionTitle,
-        transitionStory: curSt.transitionStory
+        transitionStory: curSt.transitionStory,
+        elapsedSec: finalStageTime,
+        drops: drops,
+        totalDrops: this.getTotalDrops()
       });
     } else {
       this.isTransitioning = true;
+      Haptics.win();
       this.eventBus.emit('sound:rescueFanfare', true);
       this.eventBus.emit('stage:curtain', true);
 
@@ -309,7 +338,10 @@ export class StageManager {
           stageIndex: this.stageIndex,
           isFinale: true,
           transitionTitle: 'סוף טוב, טחינה בשפע!',
-          transitionStory: 'פלאפלוצ׳יק וחומוסון ניצחו! כלוב הצללים התפרק לאלפי פירורים זוהרים!'
+          transitionStory: 'פלאפלוצ׳יק וחומוסון ניצחו! כלוב הצללים התפרק לאלפי פירורים זוהרים!',
+          elapsedSec: finalStageTime,
+          drops: drops,
+          totalDrops: this.getTotalDrops()
         });
       }, 1150);
 
@@ -346,6 +378,11 @@ export class StageManager {
   }
 
   public update(elapsed: number): void {
+    if (this.isStageTimerActive && !this.storyCompleted && !this.isTransitioning) {
+      const elapsedSec = (performance.now() - this.stageStartTime) / 1000;
+      this.eventBus.emit('stage:timerTick', { elapsedSec });
+    }
+
     // Floating stars animation
     for (let i = 0; i < this.stageStars.length; i++) {
       const star = this.stageStars[i];

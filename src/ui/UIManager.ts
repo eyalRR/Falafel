@@ -20,6 +20,8 @@ export class UIManager {
 
   private storyDotsEl: HTMLElement | null;
   private starCounterEl: HTMLElement | null;
+  private stageTimerEl: HTMLElement | null;
+  private sesameCounterEl: HTMLElement | null;
   private storyTextEl: HTMLElement | null;
   private storyModalBackdrop: HTMLElement | null;
   private storyCardBadge: HTMLElement | null;
@@ -45,6 +47,8 @@ export class UIManager {
 
     this.storyDotsEl = document.getElementById('story-dots');
     this.starCounterEl = document.getElementById('star-counter');
+    this.stageTimerEl = document.getElementById('stage-timer');
+    this.sesameCounterEl = document.getElementById('sesame-counter');
     this.storyTextEl = document.getElementById('story-text');
     this.storyModalBackdrop = document.getElementById('story-modal-backdrop');
     this.storyCardBadge = document.getElementById('story-card-badge');
@@ -120,13 +124,34 @@ export class UIManager {
     }
   }
 
+  private formatTime(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  }
+
   private bindBusListeners(): void {
     this.eventBus.on('stage:changed', (data: { stageIndex: number; config: StageConfig; showModal: boolean }) => {
       this.setEnvActive(data.config.env);
       this.toast.show(data.config.env);
       this.updateStoryUI(data.stageIndex, 0, data.config.stars.length, data.config.text, false);
+      if (this.stageTimerEl) {
+        this.stageTimerEl.textContent = '⏱️ 00:00';
+      }
       if (data.showModal) {
         this.openStoryModal(data.config.badge, data.config.title, data.config.story);
+      }
+    });
+
+    this.eventBus.on('stage:timerTick', (data: { elapsedSec: number }) => {
+      if (this.stageTimerEl) {
+        this.stageTimerEl.textContent = `⏱️ ${this.formatTime(data.elapsedSec)}`;
+      }
+    });
+
+    this.eventBus.on('track:sesameCollected', (data: { count: number }) => {
+      if (this.sesameCounterEl) {
+        this.sesameCounterEl.textContent = `🌾 ${data.count}`;
       }
     });
 
@@ -136,11 +161,27 @@ export class UIManager {
       }
     });
 
-    this.eventBus.on('stage:complete', (data: { stageIndex: number; isFinale: boolean; transitionTitle: string; transitionStory: string }) => {
+    this.eventBus.on('stage:complete', (data: {
+      stageIndex: number;
+      isFinale: boolean;
+      transitionTitle: string;
+      transitionStory: string;
+      elapsedSec?: number;
+      drops?: number;
+      totalDrops?: number;
+    }) => {
       if (data.isFinale) {
         this.updateStoryUI(3, 3, 3, 'סוף טוב, טחינה בשפע!', true);
       }
-      this.openStoryModal(data.isFinale ? 'סוף טוב!' : 'החותם נשבר!', data.transitionTitle, data.transitionStory);
+      const timeStr = data.elapsedSec ? this.formatTime(data.elapsedSec) : '';
+      const dropsIcons = '💧'.repeat(data.drops || 1);
+      const scoreBadge = data.drops ? `${dropsIcons} (${timeStr})` : (data.isFinale ? 'סוף טוב!' : 'החותם נשבר!');
+      
+      const bodyWithStats = data.elapsedSec
+        ? `${data.transitionStory}\n\n⏱️ זמן שלב: ${timeStr} | דירוג טחינה: ${dropsIcons} (${data.drops}/3)`
+        : data.transitionStory;
+
+      this.openStoryModal(scoreBadge, data.transitionTitle, bodyWithStats);
     });
 
     this.eventBus.on('story:modal', (data: { badge: string; title: string; body: string }) => {

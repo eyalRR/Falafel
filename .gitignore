@@ -8,4 +8,5 @@ Thumbs.db
 
 # Node / Logs (if expanded later)
 node_modules/
+dist/
 *.log

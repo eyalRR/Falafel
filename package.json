@@ -1,0 +1,20 @@
+{
+  "name": "falafel-3d-game",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.160.0",
+    "pnpm": "^12.18.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.0"
+  }
+}
